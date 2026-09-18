@@ -140,13 +140,22 @@ function blowOut(){
 let stream=null;
 async function startMic(){
  try{
-  stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
   const ac=new (window.AudioContext||window.webkitAudioContext)();
-  const an=ac.createAnalyser();an.fftSize=512;ac.createMediaStreamSource(stream).connect(an);
-  const d=new Uint8Array(an.fftSize);let hits=0;
-  $('status').textContent='🎤 Ekhon fu dao... fuuuuu! 💨';
-  (function chk(){if(blown)return;an.getByteTimeDomainData(d);let m=0;for(const v of d)m=Math.max(m,Math.abs(v-128));
-   hits=m>70?hits+1:0;if(hits>4)blowOut();else requestAnimationFrame(chk)})();
+  if(ac.state==='suspended')await ac.resume();
+  const an=ac.createAnalyser();an.fftSize=1024;ac.createMediaStreamSource(stream).connect(an);
+  const d=new Uint8Array(an.fftSize);
+  $('status').textContent='🎤 Ektu opekkha... mic ready hocche...';
+  let base=0,n=0,score=0,t0=performance.now();
+  (function chk(){if(blown)return;
+   an.getByteTimeDomainData(d);let s=0;for(const v of d){const x=(v-128)/128;s+=x*x}
+   const rms=Math.sqrt(s/d.length);
+   if(performance.now()-t0<700){base=Math.max(base,rms);n++;
+     if(performance.now()-t0>=600)$('status').textContent='🎤 Ekhon fu dao... fuuuuu! 💨';}
+   else{const th=Math.max(0.06,base*2.5);
+     score=rms>th?score+1:Math.max(0,score-1);
+     if(score>=8)return blowOut();}
+   requestAnimationFrame(chk)})();
  }catch(e){$('status').textContent='Mic pai nai 😅 tai "Tap kore nibhao" button e chap dao!'}
 }
 function openLetter(){$('ov').classList.add('show')}
